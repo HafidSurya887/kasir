@@ -8,23 +8,29 @@ const all=st=>new Promise(r=>{const q=db.transaction(st).objectStore(st).getAll(
 const put=(st,v)=>new Promise((r,j)=>{try{const t=db.transaction(st,'readwrite');t.objectStore(st).put(v);t.oncomplete=r;t.onerror=t.onabort=()=>j(t.error||new Error('db'))}catch(e){j(e)}});
 const rm=id=>new Promise(r=>{const t=db.transaction('p','readwrite');t.objectStore('p').delete(id);t.oncomplete=r});
 const clr=st=>new Promise(r=>{const t=db.transaction(st,'readwrite');t.objectStore(st).clear();t.oncomplete=r});
-async function load(){P=(await all('p')).sort((a,b)=>a.name.localeCompare(b.name))}
+const nz=p=>{if(!p.codes)p.codes=p.barcode?[p.barcode]:[];return p};
+async function load(){P=(await all('p')).map(nz).sort((a,b)=>a.name.localeCompare(b.name))}
 function go(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));({k:vK,p:vP,d:vD})[t]()}
 
 /* scan kamera */
 let h5=null;
-async function scan(cb){
+const BF=['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf'];
+let lc='',lt=0;
+function hit(c,cb){const n=Date.now(),d=c==lc&&n-lt<1200;lc=c;lt=n;if(!d)cb(c)}
+async function scan(cb,keep){
+ lc='';
  if('BarcodeDetector' in window){
   $('#scm').classList.add('on');const v=$('#vid');
   try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});v.srcObject=stream;await v.play()}
   catch(e){stopScan();alert('Kamera tidak bisa dibuka. Izinkan akses kamera lalu coba lagi.');return}
-  const d=new BarcodeDetector();scanning=true;
-  const loop=async()=>{if(!scanning)return;try{const r=await d.detect(v);if(r.length){stopScan();cb(r[0].rawValue);return}}catch(e){}setTimeout(loop,250)};loop();
+  let fm=BF;try{const sf=await BarcodeDetector.getSupportedFormats();fm=BF.filter(x=>sf.includes(x));if(!fm.length)fm=null}catch(e){}
+  const d=new BarcodeDetector(fm?{formats:fm}:undefined);scanning=true;
+  const loop=async()=>{if(!scanning)return;try{const r=await d.detect(v);if(r.length){if(keep)hit(r[0].rawValue,cb);else{stopScan();cb(r[0].rawValue);return}}}catch(e){}setTimeout(loop,250)};loop();
   return;
  }
  if(window.Html5Qrcode){
   $('#scm').classList.add('on');$('#vid').style.display='none';$('#rd').style.display='block';
-  try{h5=new Html5Qrcode('rd');await h5.start({facingMode:'environment'},{fps:10,qrbox:{width:260,height:150}},t=>{stopScan();cb(t)},()=>{})}
+  try{h5=new Html5Qrcode('rd',{formatsToSupport:[0,1,2,3,4,5,6,7,8,9].length&&window.Html5QrcodeSupportedFormats?['EAN_13','EAN_8','UPC_A','UPC_E','CODE_128','CODE_39','ITF'].map(k=>Html5QrcodeSupportedFormats[k]):undefined});await h5.start({facingMode:'environment'},{fps:10,qrbox:{width:260,height:150}},t=>{if(keep)hit(t,cb);else{stopScan();cb(t)}},()=>{})}
   catch(e){stopScan();alert('Kamera tidak bisa dibuka. Izinkan akses kamera lalu coba lagi.')}
   return;
  }
@@ -42,10 +48,34 @@ function vK(){
 }
 function pl(){
  const q=($('#q')?$('#q').value:'').toLowerCase();
- const l=P.filter(p=>p.name.toLowerCase().includes(q)||p.barcode==q).slice(0,30);
+ const l=P.filter(p=>p.name.toLowerCase().includes(q)||p.codes.some(c=>c.toLowerCase()==q)).slice(0,30);
  $('#pl').innerHTML=l.length?l.map(p=>`<div class="card" onclick="pick(${p.id})"><img src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><span class="pr">${rp(p.price)}</span> <span class="s">/ ${p.unit} · stok ${p.stock}</span></div></div>`).join(''):'<p class="s">Belum ada produk. Tambah dulu di tab Produk.</p>';
 }
-function scanBuy(){scan(code=>{const p=P.find(x=>x.barcode==code);if(p)pick(p.id);else alert('Barcode '+code+' belum terdaftar. Tambahkan di tab Produk.')})}
+function scanBuy(){$('#si').textContent=cart.length?cart.length+' item · '+rp(total()):'Arahkan ke barcode';scan(scanAdd,true)}
+function scanAdd(code){
+ const p=P.find(x=>x.codes.includes(code));
+ if(!p){stopScan();unk(code);return}
+ const c=cart.find(x=>x.id==p.id),n=(c?c.qty:0)+1;
+ if(n>p.stock){toast('Stok '+p.name+' tidak cukup',true);return}
+ if(c)c.qty=n;else cart.push({id:p.id,qty:1});
+ ct();toast(p.name+' · jumlah '+n);$('#si').textContent=cart.length+' item · '+rp(total());
+ try{navigator.vibrate&&navigator.vibrate(60)}catch(e){}
+}
+let uc='';
+function unk(code){
+ uc=code;
+ $('#pm').innerHTML=`<div class="box"><h3 style="margin-top:0">Kode belum terdaftar</h3><p class="s">Kode <b>${esc(code)}</b> belum ada. Apakah barang ini sama dengan produk yang sudah ada?</p><input id="uq" placeholder="Cari produk yang sama..." oninput="ul()"><div id="ul"></div><button class="btn" style="width:100%;margin-top:6px" onclick="cm('pm');formP(null,uc)">Bukan, ini produk baru</button><button class="btn g" style="width:100%;margin-top:8px" onclick="cm('pm')">Batal</button></div>`;
+ $('#pm').classList.add('on');ul();
+}
+function ul(){
+ const q=($('#uq').value||'').toLowerCase(),l=P.filter(p=>p.name.toLowerCase().includes(q)).slice(0,20);
+ $('#ul').innerHTML=l.map(p=>`<div class="card" onclick="lk(${p.id})"><img src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><span class="s">Tautkan kode ke produk ini</span></div></div>`).join('')||'<p class="s">Tidak ada produk cocok.</p>';
+}
+async function lk(id){
+ const p=P.find(x=>x.id==id);if(!p)return;
+ if(!p.codes.includes(uc))p.codes.push(uc);
+ await put('p',p);await load();toast('Kode ditautkan ke '+p.name);pick(id);
+}
 function pick(id){
  const p=P.find(x=>x.id==id);if(!p)return;
  $('#pm').innerHTML=`<div class="box"><div class="card" style="padding:0"><img style="width:84px;height:84px" src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><div class="pr">${rp(p.price)} / ${p.unit}</div><div class="s">Stok: ${p.stock} ${p.unit}</div></div></div><label class="s">Jumlah (${p.unit})</label><input id="qty" type="number" step="any" min="0" value="1" inputmode="decimal"><div class="row"><button class="btn g" onclick="cm('pm')">Batal</button><button class="btn" onclick="add(${p.id})">Masukkan keranjang</button></div></div>`;
@@ -109,7 +139,7 @@ async function dl(u,n){
 
 /* tab produk */
 function vP(){
- $('main').innerHTML=`<button class="btn" style="width:100%;margin-bottom:10px" onclick="formP()">Tambah produk</button>`+(P.length?P.map(p=>`<div class="card"><img src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><span class="pr">${rp(p.price)}</span> <span class="s">/ ${p.unit} · stok ${p.stock}</span><div class="s">${p.barcode?'Barcode '+esc(p.barcode):'Tanpa barcode'}</div></div><div><button class="btn g" style="padding:8px 10px" onclick="formP(${p.id})">Ubah</button><button class="btn r" style="margin-top:6px" onclick="hapus(${p.id})">Hapus</button></div></div>`).join(''):'<p class="s">Belum ada produk. Tekan Tambah produk untuk memulai.</p>');
+ $('main').innerHTML=`<button class="btn" style="width:100%;margin-bottom:10px" onclick="formP()">Tambah produk</button>`+(P.length?P.map(p=>`<div class="card"><img src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><span class="pr">${rp(p.price)}</span> <span class="s">/ ${p.unit} · stok ${p.stock}</span><div class="s">${p.codes.length?p.codes.length+' kode: '+esc(p.codes.join(', ')):'Tanpa barcode'}</div></div><div><button class="btn g" style="padding:8px 10px" onclick="formP(${p.id})">Ubah</button><button class="btn r" style="margin-top:6px" onclick="hapus(${p.id})">Hapus</button></div></div>`).join(''):'<p class="s">Belum ada produk. Tekan Tambah produk untuk memulai.</p>');
 }
 async function hapus(id){if(confirm('Hapus produk ini?')){await rm(id);cart=cart.filter(c=>c.id!=id);await load();vP();toast('Produk dihapus')}}
 function toast(m,bad){const t=$('#toast');t.textContent=m;t.className='on'+(bad?' bad':'');clearTimeout(t._h);t._h=setTimeout(()=>{t.className=''},3200)}
@@ -124,15 +154,23 @@ async function pf(el){
  catch(e){ph='';$('#pv').style.display='none';el.value='';ferr('Foto tidak bisa dibaca. Coba foto lain atau ambil ulang dengan kamera.')}
 }
 let saving=false;
-function formP(id){
- const p=id?P.find(x=>x.id==id):{};if(id&&!p)return;eid=id||null;ph=p.photo||'';
- $('#fm').innerHTML=`<div class="box"><h3 style="margin-top:0">${id?'Ubah':'Tambah'} produk</h3><img id="pv" src="${ph}" style="width:100%;max-height:170px;object-fit:contain;display:${ph?'block':'none'}"><label class="s">Foto barang (wajib)</label><input type="file" accept="image/*" onchange="pf(this)"><input id="fn" maxlength="60" placeholder="Nama produk" value="${esc(p.name||'')}"><div class="row"><input id="fh" type="number" inputmode="numeric" min="0" placeholder="Harga" value="${p.price??''}"><input id="fs" type="number" inputmode="decimal" step="any" min="0" placeholder="Stok" value="${p.stock??''}"></div><select id="fu">${['pcs','bungkus','kg','liter','pak'].map(u=>`<option ${p.unit==u?'selected':''}>${u}</option>`).join('')}</select><input id="fb" placeholder="Barcode (kosongkan jika tidak ada)" value="${esc(p.barcode||'')}"><div class="row"><button class="btn g" onclick="scan(c=>{$('#fb').value=c})">Scan barcode</button><button class="btn g" onclick="$('#fb').value='K'+Date.now()">Buat kode</button></div><div id="fe" class="err"></div><div class="row"><button class="btn g" onclick="cm('fm')">Batal</button><button class="btn" id="fsv" onclick="save()">Simpan produk</button></div></div>`;
- $('#fm').classList.add('on');
+let fc=[];
+function formP(id,code){
+ const p=id?P.find(x=>x.id==id):{};if(id&&!p)return;eid=id||null;ph=p.photo||'';fc=[...(p.codes||[])];if(code)fc.push(code);
+ $('#fm').innerHTML=`<div class="box"><h3 style="margin-top:0">${id?'Ubah':'Tambah'} produk</h3><img id="pv" src="${ph}" style="width:100%;max-height:170px;object-fit:contain;display:${ph?'block':'none'}"><label class="s">Foto barang (wajib)</label><input type="file" accept="image/*" onchange="pf(this)"><input id="fn" maxlength="60" placeholder="Nama produk" value="${esc(p.name||'')}"><div class="row"><input id="fh" type="number" inputmode="numeric" min="0" placeholder="Harga" value="${p.price??''}"><input id="fs" type="number" inputmode="decimal" step="any" min="0" placeholder="Stok" value="${p.stock??''}"></div><select id="fu">${['pcs','bungkus','kg','liter','pak'].map(u=>`<option ${p.unit==u?'selected':''}>${u}</option>`).join('')}</select><label class="s">Kode barcode (boleh lebih dari satu)</label><div id="cc" class="chips"></div><input id="fb" placeholder="Ketik kode barcode"><div class="row"><button class="btn g" onclick="addc($('#fb').value)">+ Tambah</button><button class="btn g" onclick="scan(addc)">Scan</button><button class="btn g" onclick="addc('K'+Date.now())">Buat kode</button></div><div id="fe" class="err"></div><div class="row"><button class="btn g" onclick="cm('fm')">Batal</button><button class="btn" id="fsv" onclick="save()">Simpan produk</button></div></div>`;
+$('#fm').classList.add('on');rc();
+}
+function rc(){$('#cc').innerHTML=fc.map((c,i)=>`<span class="chip">${esc(c)}<b onclick="fc.splice(${i},1);rc()">×</b></span>`).join('')||'<span class="s">Belum ada kode</span>'}
+function addc(c){
+ c=(c||'').replace(/\s+/g,'');if(!c)return;
+ const x=P.find(x=>x.codes.includes(c)&&x.id!=eid);
+ if(x)return ferr('Kode ini sudah dipakai produk "'+x.name+'".');
+ if(!fc.includes(c))fc.push(c);$('#fb').value='';ferr('');rc();
 }
 async function save(){
  if(saving)return;
  document.querySelectorAll('#fm input,#fm select').forEach(e=>{e.style.borderColor=''});ferr('');
- const n=$('#fn').value.trim().replace(/\s+/g,' '),hs=$('#fh').value.trim(),ss=$('#fs').value.trim(),u=$('#fu').value,b=$('#fb').value.replace(/\s+/g,'');
+ const n=$('#fn').value.trim().replace(/\s+/g,' '),hs=$('#fh').value.trim(),ss=$('#fs').value.trim(),u=$('#fu').value;
  const h=Number(hs),s=Number(ss);
  if(!ph)return ferr('Foto barang wajib ada. Pilih atau ambil foto dulu.');
  if(!n)return ferr('Nama produk belum diisi.','fn');
@@ -140,13 +178,12 @@ async function save(){
  if(h>1e9)return ferr('Harga terlalu besar.','fh');
  if(ss===''||!isFinite(s)||s<0)return ferr('Stok harus berupa angka 0 atau lebih.','fs');
  if(['pcs','bungkus','pak'].includes(u)&&!Number.isInteger(s))return ferr('Stok '+u+' harus bilangan bulat, tanpa koma.','fs');
- const db1=b&&P.find(x=>x.barcode==b&&x.id!=eid);
- if(db1)return ferr('Barcode ini sudah dipakai produk "'+db1.name+'".','fb');
+ const pend=$('#fb').value.replace(/\s+/g,'');if(pend){addc(pend);if($('#fe').textContent)return}
  const dn=P.find(x=>x.name.toLowerCase()==n.toLowerCase()&&x.id!=eid);
  if(dn)return ferr('Nama "'+n+'" sudah ada. Tambahkan ukuran atau varian supaya beda.','fn');
  saving=true;const btn=$('#fsv');btn.disabled=true;btn.textContent='Menyimpan...';
  try{
-  await put('p',{id:eid||Date.now(),name:n,price:h,stock:s,unit:u,barcode:b,photo:ph});
+  await put('p',{id:eid||Date.now(),name:n,price:h,stock:s,unit:u,codes:fc.slice(),photo:ph});
   cm('fm');await load();vP();toast('Produk tersimpan');
  }catch(e){ferr(e&&e.name=='QuotaExceededError'?'Gagal menyimpan: penyimpanan HP penuh.':'Gagal menyimpan. Coba lagi.')}
  finally{saving=false;btn.disabled=false;btn.textContent='Simpan produk'}

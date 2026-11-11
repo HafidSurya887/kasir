@@ -3,10 +3,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Kasir</title>
 <link rel="stylesheet" href="style.css"></head><body>
-<header>Kasir</header><main></main>
+<meta name="theme-color" content="#f6f4f0"><header>Kasir</header><main></main>
 <nav><button data-t="k" onclick="go('k')">Kasir</button><button data-t="p" onclick="go('p')">Produk</button><button data-t="d" onclick="go('d')">Data</button></nav>
 <div class="modal" id="pm"></div><div class="modal" id="fm"></div><div class="modal" id="sm"></div>
-<div class="modal" id="scm" style="z-index:30"><div class="box"><video id="vid" playsinline muted></video><div id="rd" style="display:none"></div><button class="btn g" style="width:100%;margin-top:8px" onclick="stopScan()">Tutup kamera</button></div></div>
+<div class="modal" id="scm" style="z-index:30"><div class="box"><video id="vid" playsinline muted></video><div id="rd" style="display:none"></div><p id="si" class="s" style="text-align:center;margin:10px 0 0"></p><button class="btn g" style="width:100%;margin-top:8px" onclick="stopScan()">Selesai scan</button></div></div>
 <div id="toast"></div>
 <script src="html5-qrcode.min.js"></script>
 <script src="app.js"></script></body></html>
