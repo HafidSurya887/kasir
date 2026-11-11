@@ -109,7 +109,7 @@ async function dl(u,n){
 
 /* tab produk */
 function vP(){
- $('main').innerHTML=`<button class="btn" style="width:100%;margin-bottom:10px" onclick="form()">Tambah produk</button>`+(P.length?P.map(p=>`<div class="card"><img src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><span class="pr">${rp(p.price)}</span> <span class="s">/ ${p.unit} · stok ${p.stock}</span><div class="s">${p.barcode?'Barcode '+esc(p.barcode):'Tanpa barcode'}</div></div><div><button class="btn g" style="padding:8px 10px" onclick="form(${p.id})">Ubah</button><button class="btn r" style="margin-top:6px" onclick="hapus(${p.id})">Hapus</button></div></div>`).join(''):'<p class="s">Belum ada produk. Tekan Tambah produk untuk memulai.</p>');
+ $('main').innerHTML=`<button class="btn" style="width:100%;margin-bottom:10px" onclick="formP()">Tambah produk</button>`+(P.length?P.map(p=>`<div class="card"><img src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><span class="pr">${rp(p.price)}</span> <span class="s">/ ${p.unit} · stok ${p.stock}</span><div class="s">${p.barcode?'Barcode '+esc(p.barcode):'Tanpa barcode'}</div></div><div><button class="btn g" style="padding:8px 10px" onclick="formP(${p.id})">Ubah</button><button class="btn r" style="margin-top:6px" onclick="hapus(${p.id})">Hapus</button></div></div>`).join(''):'<p class="s">Belum ada produk. Tekan Tambah produk untuk memulai.</p>');
 }
 async function hapus(id){if(confirm('Hapus produk ini?')){await rm(id);cart=cart.filter(c=>c.id!=id);await load();vP();toast('Produk dihapus')}}
 function toast(m,bad){const t=$('#toast');t.textContent=m;t.className='on'+(bad?' bad':'');clearTimeout(t._h);t._h=setTimeout(()=>{t.className=''},3200)}
@@ -124,7 +124,7 @@ async function pf(el){
  catch(e){ph='';$('#pv').style.display='none';el.value='';ferr('Foto tidak bisa dibaca. Coba foto lain atau ambil ulang dengan kamera.')}
 }
 let saving=false;
-function form(id){
+function formP(id){
  const p=id?P.find(x=>x.id==id):{};if(id&&!p)return;eid=id||null;ph=p.photo||'';
  $('#fm').innerHTML=`<div class="box"><h3 style="margin-top:0">${id?'Ubah':'Tambah'} produk</h3><img id="pv" src="${ph}" style="width:100%;max-height:170px;object-fit:contain;display:${ph?'block':'none'}"><label class="s">Foto barang (wajib)</label><input type="file" accept="image/*" onchange="pf(this)"><input id="fn" maxlength="60" placeholder="Nama produk" value="${esc(p.name||'')}"><div class="row"><input id="fh" type="number" inputmode="numeric" min="0" placeholder="Harga" value="${p.price??''}"><input id="fs" type="number" inputmode="decimal" step="any" min="0" placeholder="Stok" value="${p.stock??''}"></div><select id="fu">${['pcs','bungkus','kg','liter','pak'].map(u=>`<option ${p.unit==u?'selected':''}>${u}</option>`).join('')}</select><input id="fb" placeholder="Barcode (kosongkan jika tidak ada)" value="${esc(p.barcode||'')}"><div class="row"><button class="btn g" onclick="scan(c=>{$('#fb').value=c})">Scan barcode</button><button class="btn g" onclick="$('#fb').value='K'+Date.now()">Buat kode</button></div><div id="fe" class="err"></div><div class="row"><button class="btn g" onclick="cm('fm')">Batal</button><button class="btn" id="fsv" onclick="save()">Simpan produk</button></div></div>`;
  $('#fm').classList.add('on');
