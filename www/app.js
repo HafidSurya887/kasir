@@ -164,6 +164,6 @@ async function imp(el){
  catch(e){alert('File backup tidak valid')}
 }
 openDB().then(load).then(()=>go('k'));
-window.addEventListener('unhandledrejection',()=>toast('Terjadi kesalahan, coba lagi',true));
-window.addEventListener('error',()=>toast('Terjadi kesalahan, coba lagi',true));
-if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+window.addEventListener('unhandledrejection',e=>{const r=e.reason;toast('Error: '+((r&&(r.message||r.name))||r),true)});
+window.addEventListener('error',e=>{if(/ResizeObserver/.test(e.message||''))return;toast('Error: '+(e.message||'tidak diketahui')+' (baris '+(e.lineno||'?')+')',true)});
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{})}catch(e){}
