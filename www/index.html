@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="id"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f6f4f0">
 <title>Kasir</title>
 <link rel="stylesheet" href="style.css"></head><body>
-<meta name="theme-color" content="#f6f4f0"><header>Kasir</header><main></main>
-<nav><button data-t="k" onclick="go('k')">Kasir</button><button data-t="p" onclick="go('p')">Produk</button><button data-t="d" onclick="go('d')">Data</button></nav>
+<header><div id="hd"></div><button id="mn" onclick="menu()" aria-label="Menu"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></button></header><div id="dd"></div><main></main>
+<nav><button data-t="h" onclick="go('h')"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Beranda</button><button data-t="k" onclick="go('k')"><svg viewBox="0 0 24 24"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M4 12h16"/></svg>Kasir</button><button data-t="p" onclick="go('p')"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg>Produk</button></nav>
+<input type="file" id="imf" accept="application/json,.json" hidden onchange="imp(this)">
 <div class="modal" id="pm"></div><div class="modal" id="fm"></div><div class="modal" id="sm"></div>
-<div class="modal" id="scm" style="z-index:30"><div class="box"><video id="vid" playsinline muted></video><div id="rd" style="display:none"></div><p id="si" class="s" style="text-align:center;margin:10px 0 0"></p><button class="btn g" style="width:100%;margin-top:8px" onclick="stopScan()">Selesai scan</button></div></div>
+<div class="modal" id="scm" style="z-index:30"><div class="box"><video id="vid" playsinline muted></video><div id="rd" style="display:none"></div><div class="vf"></div><p id="si"></p><button class="btn g" onclick="stopScan()">Selesai scan</button></div></div>
 <div id="toast"></div>
 <script src="html5-qrcode.min.js"></script>
 <script src="app.js"></script></body></html>

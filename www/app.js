@@ -10,7 +10,7 @@ const rm=id=>new Promise(r=>{const t=db.transaction('p','readwrite');t.objectSto
 const clr=st=>new Promise(r=>{const t=db.transaction(st,'readwrite');t.objectStore(st).clear();t.oncomplete=r});
 const nz=p=>{if(!p.codes)p.codes=p.barcode?[p.barcode]:[];return p};
 async function load(){P=(await all('p')).map(nz).sort((a,b)=>a.name.localeCompare(b.name))}
-function go(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));({k:vK,p:vP,d:vD})[t]()}
+function go(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));({h:vH,k:vK,p:vP})[t]()}
 
 /* scan kamera */
 let h5=null;
@@ -18,7 +18,7 @@ const BF=['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf'];
 let lc='',lt=0;
 function hit(c,cb){const n=Date.now(),d=c==lc&&n-lt<1200;lc=c;lt=n;if(!d)cb(c)}
 async function scan(cb,keep){
- lc='';
+ lc='';if(!keep)$('#si').textContent='Arahkan kamera ke barcode';
  if('BarcodeDetector' in window){
   $('#scm').classList.add('on');const v=$('#vid');
   try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});v.srcObject=stream;await v.play()}
@@ -68,13 +68,13 @@ function unk(code){
  $('#pm').classList.add('on');ul();
 }
 function ul(){
- const q=($('#uq').value||'').toLowerCase(),l=P.filter(p=>p.name.toLowerCase().includes(q)).slice(0,20);
- $('#ul').innerHTML=l.map(p=>`<div class="card" onclick="lk(${p.id})"><img src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><span class="s">Tautkan kode ke produk ini</span></div></div>`).join('')||'<p class="s">Tidak ada produk cocok.</p>';
+ const q=($('#uq').value||'').toLowerCase(),sp=p=>Math.max(0,...p.codes.map(c=>{let i=0;while(i<c.length&&c[i]==uc[i])i++;return i})),l=P.filter(p=>p.name.toLowerCase().includes(q)).sort((a,b)=>sp(b)-sp(a)).slice(0,20);
+ $('#ul').innerHTML=l.map(p=>`<div class="card" onclick="lk(${p.id})"><img src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><span class="s">${sp(p)>=7?'Mirip (awal kode sama) · ':''}Ini produk yang sama</span></div></div>`).join('')||'<p class="s">Tidak ada produk cocok.</p>';
 }
 async function lk(id){
  const p=P.find(x=>x.id==id);if(!p)return;
  if(!p.codes.includes(uc))p.codes.push(uc);
- await put('p',p);await load();toast('Kode ditautkan ke '+p.name);pick(id);
+ await put('p',p);await load();cm('pm');scanAdd(uc);
 }
 function pick(id){
  const p=P.find(x=>x.id==id);if(!p)return;
@@ -109,7 +109,7 @@ async function bayar(){
  await put('s',s);cart=[];await load();pl();ct();struk(s);
 }
 function struk(s){
- const L=[['T','STRUK PENJUALAN'],['T',new Date(s.id).toLocaleString('id-ID')],['-']];
+ const f=gp(),L=[['T',(f.toko||'STRUK PENJUALAN').toUpperCase()]];if(f.alamat)L.push(['T',f.alamat]);if(f.hp)L.push(['T',f.hp]);L.push(['T',new Date(s.id).toLocaleString('id-ID')],['-']);
  s.items.forEach(i=>{L.push(['L',i.n]);L.push(['R',i.q+' '+i.u+' x '+rp(i.h),rp(i.q*i.h)])});
  L.push(['-'],['R','TOTAL',rp(s.total)],['R','BAYAR',rp(s.bayar)],['R','KEMBALI',rp(s.kembali)],['-'],['T','Terima kasih']);
  const c=document.createElement('canvas');c.width=480;c.height=50+L.length*30;
@@ -139,7 +139,12 @@ async function dl(u,n){
 
 /* tab produk */
 function vP(){
- $('main').innerHTML=`<button class="btn" style="width:100%;margin-bottom:10px" onclick="formP()">Tambah produk</button>`+(P.length?P.map(p=>`<div class="card"><img src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><span class="pr">${rp(p.price)}</span> <span class="s">/ ${p.unit} · stok ${p.stock}</span><div class="s">${p.codes.length?p.codes.length+' kode: '+esc(p.codes.join(', ')):'Tanpa barcode'}</div></div><div><button class="btn g" style="padding:8px 10px" onclick="formP(${p.id})">Ubah</button><button class="btn r" style="margin-top:6px" onclick="hapus(${p.id})">Hapus</button></div></div>`).join(''):'<p class="s">Belum ada produk. Tekan Tambah produk untuk memulai.</p>');
+ $('main').innerHTML=`<div class="row"><input id="pq" placeholder="Cari produk atau kode..." oninput="pg()"><button class="btn" style="flex:0 0 auto;margin-bottom:8px" onclick="formP()">+ Tambah</button></div><div class="s" id="pc" style="margin:0 2px 10px"></div><div class="grid" id="pg"></div>`;pg()
+}
+function pg(){
+ const q=($('#pq').value||'').toLowerCase(),l=P.filter(p=>p.name.toLowerCase().includes(q)||p.codes.some(c=>c.toLowerCase().includes(q)));
+ $('#pc').textContent=P.length+' produk'+(q?' · '+l.length+' cocok':'');
+ $('#pg').innerHTML=l.map(p=>`<div class="pc"><img src="${p.photo}"><b>${esc(p.name)}</b><span class="pr">${rp(p.price)}</span><span class="bg ${p.stock<=0?'x':p.stock<=5?'w':''}">${p.stock<=0?'Habis':'Stok '+p.stock+' '+p.unit}</span><div class="row"><button class="btn g" onclick="formP(${p.id})">Ubah</button><button class="btn r" onclick="hapus(${p.id})">Hapus</button></div></div>`).join('')||'<p class="s">Belum ada produk.</p>';
 }
 async function hapus(id){if(confirm('Hapus produk ini?')){await rm(id);cart=cart.filter(c=>c.id!=id);await load();vP();toast('Produk dihapus')}}
 function toast(m,bad){const t=$('#toast');t.textContent=m;t.className='on'+(bad?' bad':'');clearTimeout(t._h);t._h=setTimeout(()=>{t.className=''},3200)}
@@ -189,18 +194,48 @@ async function save(){
  finally{saving=false;btn.disabled=false;btn.textContent='Simpan produk'}
 }
 
-/* tab data */
-async function vD(){
- const S=await all('s'),t0=new Date().setHours(0,0,0,0),td=S.filter(s=>s.id>=t0),low=P.filter(p=>p.stock<=5);
- $('main').innerHTML=`<div class="card"><div class="i"><b>Hari ini</b><span class="s">${td.length} transaksi, total ${rp(td.reduce((a,s)=>a+s.total,0))}</span></div></div><div class="card"><div class="i"><b>Stok menipis (5 atau kurang)</b><span class="s">${low.length?low.map(p=>esc(p.name)+' ('+p.stock+')').join(', '):'Semua stok aman'}</span></div></div><button class="btn" style="width:100%;margin-bottom:10px" onclick="exp()">Ekspor backup</button><label class="s">Impor backup (menimpa semua data saat ini)</label><input type="file" accept=".json" onchange="imp(this)"><p class="s">Data tersimpan di HP ini. Kalau aplikasi dihapus atau data browser dibersihkan, data hilang, jadi ekspor backup secara rutin.</p>`;
+/* beranda, profil, menu */
+let per=1;
+const gp=()=>{try{return JSON.parse(localStorage.getItem('prof'))||{}}catch(e){return{}}};
+function hdr(){const p=gp();$('#hd').innerHTML=`<span class="av">${p.foto?`<img src="${p.foto}">`:esc((p.toko||'K')[0].toUpperCase())}</span><div><b>${esc(p.toko||'Kasir')}</b><span class="s">${p.nama?'Halo, '+esc(p.nama):'Atur profil di menu ⋮'}</span></div>`}
+async function vH(){
+ const S=await all('s'),d0=new Date().setHours(0,0,0,0),fr=d0-(per-1)*864e5,L=S.filter(s=>s.id>=fr),rev=L.reduce((a,s)=>a+s.total,0),n=L.length,qty=L.reduce((a,s)=>a+s.items.reduce((b,i)=>b+i.q,0),0);
+ const T={};L.forEach(s=>s.items.forEach(i=>{const t=T[i.n]||(T[i.n]={q:0});t.q+=i.q}));
+ const top=Object.entries(T).sort((a,b)=>b[1].q-a[1].q).slice(0,5),mx=top.length?top[0][1].q:1;
+ const nb=per==1?24:per,B=Array(nb).fill(0);L.forEach(s=>{B[per==1?new Date(s.id).getHours():Math.min(nb-1,Math.floor((s.id-fr)/864e5))]++});
+ const bm=Math.max(1,...B),low=P.filter(p=>p.stock<=5);
+ $('main').innerHTML=`<div class="seg">${[[1,'Hari ini'],[7,'7 hari'],[30,'30 hari']].map(([v,t])=>`<button class="${v==per?'on':''}" onclick="per=${v};vH()">${t}</button>`).join('')}</div>
+ <div class="stats"><div class="st hi"><span>Total penjualan</span><b>${rp(rev)}</b></div><div class="st"><span>Transaksi</span><b>${n}</b></div><div class="st"><span>Barang terjual</span><b>${Math.round(qty*100)/100}</b></div><div class="st hi" style="background:#fff;color:var(--ink)"><span>Rata-rata per transaksi</span><b>${rp(n?rev/n:0)}</b></div></div>
+ <h3>Traffic pembeli ${per==1?'per jam':'per hari'}</h3><div class="bars">${B.map(v=>`<i style="height:${Math.max(4,v/bm*100)}%"></i>`).join('')}</div><div class="s ax"><span>${per==1?'00.00':'Awal'}</span><span>${n&&per==1?'Tersibuk '+B.indexOf(bm)+'.00':''}</span><span>${per==1?'23.00':'Hari ini'}</span></div>
+ <h3>Produk terlaris</h3>${top.map(([nm,t],i)=>{const p=P.find(x=>x.name==nm);return`<div class="tp"><em>${i+1}</em>${p?`<img src="${p.photo}">`:''}<div class="i"><b>${esc(nm)}</b><span class="s">${Math.round(t.q*100)/100} terjual</span><div class="tb"><i style="width:${t.q/mx*100}%"></i></div></div></div>`}).join('')||'<p class="s">Belum ada penjualan pada periode ini.</p>'}
+ ${low.length?`<h3>Stok menipis</h3>`+low.map(p=>`<div class="tp"><img src="${p.photo}"><div class="i"><b>${esc(p.name)}</b><span class="s">${p.stock<=0?'Habis':'Sisa '+p.stock+' '+p.unit}</span></div></div>`).join(''):''}`;
 }
-async function exp(){const b=new Blob([JSON.stringify({p:P,s:await all('s')})],{type:'application/json'});dl(URL.createObjectURL(b),'backup-kasir.json')}
+function menu(){const d=$('#dd');if(d.classList.toggle('on'))d.innerHTML=[['Profil toko','prof()'],['Riwayat transaksi','hist()'],['Backup data','exp()'],['Pulihkan data',"$('#imf').click()"],['Tentang aplikasi',"alert('Kasir v2 · data tersimpan di HP ini, rutin backup lewat menu.')"]].map(([t,f])=>`<button onclick="$('#dd').classList.remove('on');${f}">${t}</button>`).join('')}
+document.addEventListener('click',e=>{if(!e.target.closest('#dd,#mn'))$('#dd').classList.remove('on')});
+let pph='';
+function prof(){
+ const p=gp();pph=p.foto||'';
+ $('#pm').innerHTML=`<div class="box"><h3 style="margin-top:0">Profil toko</h3><div style="text-align:center"><span class="av big" id="pav">${pph?`<img src="${pph}">`:'＋'}</span><label class="btn g" style="display:inline-block;margin-bottom:12px">Pilih foto<input type="file" accept="image/*" hidden onchange="pfp(this)"></label></div><label class="s">Nama pemilik</label><input id="pn" value="${esc(p.nama||'')}"><label class="s">Nama toko</label><input id="pt" value="${esc(p.toko||'')}"><label class="s">Alamat</label><input id="pa" value="${esc(p.alamat||'')}"><label class="s">No. telepon</label><input id="ph" type="tel" value="${esc(p.hp||'')}"><div class="row"><button class="btn g" onclick="cm('pm')">Batal</button><button class="btn" onclick="psv()">Simpan</button></div></div>`;
+ $('#pm').classList.add('on');
+}
+async function pfp(el){const f=el.files[0];if(!f)return;try{pph=await img(f);$('#pav').innerHTML=`<img src="${pph}">`}catch(e){toast('Foto tidak bisa dibaca',true)}}
+function psv(){
+ try{localStorage.setItem('prof',JSON.stringify({nama:$('#pn').value.trim(),toko:$('#pt').value.trim(),alamat:$('#pa').value.trim(),hp:$('#ph').value.trim(),foto:pph}))}catch(e){return toast('Gagal menyimpan profil',true)}
+ hdr();cm('pm');toast('Profil tersimpan');
+}
+async function hist(){
+ const S=(await all('s')).sort((a,b)=>b.id-a.id).slice(0,40);
+ $('#pm').innerHTML=`<div class="box"><h3 style="margin-top:0">Riwayat transaksi</h3>${S.map(s=>`<div class="card" onclick="sv(${s.id})"><div class="i"><b>${rp(s.total)}</b><span class="s">${new Date(s.id).toLocaleString('id-ID')} · ${s.items.length} jenis barang</span></div></div>`).join('')||'<p class="s">Belum ada transaksi.</p>'}<button class="btn g" style="width:100%" onclick="cm('pm')">Tutup</button></div>`;
+ $('#pm').classList.add('on');
+}
+async function sv(id){struk((await all('s')).find(s=>s.id==id))}
+async function exp(){const b=new Blob([JSON.stringify({p:P,s:await all('s'),prof:gp()})],{type:'application/json'});dl(URL.createObjectURL(b),'backup-kasir.json')}
 async function imp(el){
  const f=el.files[0];if(!f||!confirm('Timpa semua data dengan backup ini?'))return;
- try{const d=JSON.parse(await f.text());await clr('p');await clr('s');for(const p of d.p)await put('p',p);for(const s of d.s)await put('s',s);await load();go('d');alert('Impor berhasil')}
+ try{const d=JSON.parse(await f.text());await clr('p');await clr('s');for(const p of d.p)await put('p',p);for(const s of d.s)await put('s',s);if(d.prof)localStorage.setItem('prof',JSON.stringify(d.prof));await load();hdr();go('h');alert('Impor berhasil')}
  catch(e){alert('File backup tidak valid')}
 }
-openDB().then(load).then(()=>go('k'));
+openDB().then(load).then(()=>{hdr();go('h')});
 window.addEventListener('unhandledrejection',e=>{const r=e.reason;toast('Error: '+((r&&(r.message||r.name))||r),true)});
 window.addEventListener('error',e=>{if(/ResizeObserver/.test(e.message||''))return;toast('Error: '+(e.message||'tidak diketahui')+' (baris '+(e.lineno||'?')+')',true)});
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{})}catch(e){}
