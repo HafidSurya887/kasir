@@ -52,3 +52,9 @@ nav button{font-size:12px}nav svg{display:block;margin:0 auto 3px;width:22px;hei
 .vf{position:absolute;left:12%;right:12%;top:28%;height:24%;border:2px solid rgba(255,255,255,.9);border-radius:18px;pointer-events:none;overflow:hidden}
 .vf:after{content:'';position:absolute;left:0;right:0;height:2px;background:#7fd1be;animation:sl 1.6s ease-in-out infinite alternate}@keyframes sl{from{top:0}to{top:100%}}
 #si{margin:0;text-align:center;font-size:16px;font-weight:600}#scm .btn.g{background:rgba(255,255,255,.16);color:#fff}
+
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pk{background:#fff;border-radius:14px;padding:6px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:2px;min-width:0}
+.pk img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;background:var(--pri2)}
+.pk b{font-size:11px;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:26px;margin-top:3px}
+.pk .pr{font-size:11px}.pk .s{font-size:10px}.pk .s.x{color:var(--bad)}.rw{flex-wrap:wrap}.rw>*{flex:1 1 40%}
